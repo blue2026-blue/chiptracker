@@ -1,0 +1,24 @@
+{
+  "name": "大戶籌碼追蹤",
+  "short_name": "籌碼追蹤",
+  "description": "追蹤上市櫃大戶持股變化，超過1%自動提醒",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0e1a",
+  "theme_color": "#00d4ff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
