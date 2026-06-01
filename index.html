@@ -1,1 +1,1003 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="籌碼雷達">
+<meta name="theme-color" content="#0ff">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>籌碼雷達｜大戶追蹤系統</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=Share+Tech+Mono&display=swap');
+:root{
+  --bg:#020810;--s1:#071020;--s2:#0a1828;--bd:#0d2440;
+  --c1:#00ffff;--c2:#00e676;--c3:#ff6b35;--c4:#ffb300;--c5:#ff3d57;
+  --t1:#c8dff0;--t2:#4a7090;--t3:#1e3a50;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overscroll-behavior:none;}
+body{background:var(--bg);color:var(--t1);font-family:'Noto Sans TC',sans-serif;min-height:100vh;padding-bottom:68px;}
 
+/* scanlines effect */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.15) 2px,rgba(0,0,0,.15) 4px);pointer-events:none;z-index:999;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(0,255,255,.04) 0%,transparent 70%);pointer-events:none;z-index:0;}
+
+/* HEADER */
+.hdr{position:sticky;top:0;z-index:60;background:rgba(2,8,16,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--bd);padding:10px 14px 8px;display:flex;align-items:center;justify-content:space-between;}
+.hdr-brand{display:flex;flex-direction:column;}
+.hdr-brand h1{font-family:'Share Tech Mono',monospace;font-size:15px;color:var(--c1);letter-spacing:3px;text-shadow:0 0 12px rgba(0,255,255,.6);}
+.hdr-brand p{font-size:9px;color:var(--t2);letter-spacing:2px;margin-top:1px;}
+.hdr-r{display:flex;gap:6px;}
+.hbtn{background:rgba(0,255,255,.06);border:1px solid rgba(0,255,255,.2);border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;color:var(--c1);transition:all .2s;}
+.hbtn:active{background:rgba(0,255,255,.15);}
+
+/* ALERT */
+.alert-bar{margin:8px 12px 0;background:rgba(255,179,0,.06);border:1px solid rgba(255,179,0,.25);border-radius:8px;padding:8px 12px;display:none;}
+.alert-bar.show{display:block;}
+.alert-title{font-size:10px;color:var(--c4);font-weight:700;letter-spacing:1px;margin-bottom:4px;}
+.alert-item{font-size:11px;color:var(--t1);padding:2px 0;display:flex;align-items:center;gap:7px;}
+.adot{width:5px;height:5px;border-radius:50%;background:var(--c4);flex-shrink:0;animation:pulse 1.2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* SUMMARY GRID */
+.sum-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;padding:10px 12px 6px;}
+.sc{background:var(--s1);border:1px solid var(--bd);border-radius:9px;padding:10px 12px;position:relative;overflow:hidden;}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;}
+.sc.g::before{background:linear-gradient(90deg,transparent,var(--c2),transparent);}
+.sc.b::before{background:linear-gradient(90deg,transparent,var(--c1),transparent);}
+.sc.o::before{background:linear-gradient(90deg,transparent,var(--c3),transparent);}
+.sc.w::before{background:linear-gradient(90deg,transparent,var(--c4),transparent);}
+.sl{font-size:9px;color:var(--t2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;}
+.sv{font-family:'Share Tech Mono',monospace;font-size:22px;font-weight:700;}
+.sc.g .sv{color:var(--c2);text-shadow:0 0 10px rgba(0,230,118,.4);}
+.sc.b .sv{color:var(--c1);text-shadow:0 0 10px rgba(0,255,255,.4);}
+.sc.o .sv{color:var(--c3);}
+.sc.w .sv{color:var(--c4);text-shadow:0 0 10px rgba(255,179,0,.4);}
+
+/* SCANNER PANEL */
+.scanner{margin:6px 12px;background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden;}
+.scanner-hdr{padding:10px 13px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;}
+.scanner-hdr h3{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--c4);letter-spacing:2px;}
+.scanner-body{padding:12px 13px;}
+
+.cond-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.cond-item{display:flex;flex-direction:column;gap:4px;}
+.cond-label{font-size:9px;color:var(--t2);letter-spacing:1px;text-transform:uppercase;}
+.cond-select{background:var(--bg);border:1px solid var(--bd);border-radius:7px;color:var(--t1);font-family:'Noto Sans TC',sans-serif;font-size:12px;padding:7px 10px;outline:none;width:100%;-webkit-appearance:none;}
+.cond-select:focus{border-color:var(--c1);}
+
+.scan-row{display:flex;gap:8px;margin-top:4px;}
+.scan-btn{flex:1;padding:11px;border-radius:8px;border:none;font-family:'Noto Sans TC',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.5px;}
+.scan-primary{background:linear-gradient(135deg,var(--c4),var(--c3));color:#000;}
+.scan-primary:active{transform:scale(.97);}
+.scan-primary.running{background:var(--s2);color:var(--t2);pointer-events:none;}
+.scan-secondary{background:var(--s2);border:1px solid var(--bd);color:var(--t2);}
+
+/* PROGRESS */
+.prog-wrap{margin:8px 0 4px;display:none;}
+.prog-wrap.show{display:block;}
+.prog-bar{height:3px;background:var(--bd);border-radius:2px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--c1),var(--c4));border-radius:2px;transition:width .3s;width:0%;}
+.prog-txt{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--t2);margin-top:4px;letter-spacing:1px;}
+
+/* RESULTS */
+.result-panel{margin:6px 12px;display:none;}
+.result-panel.show{display:block;}
+.result-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+.result-hdr h3{font-size:12px;color:var(--c4);font-weight:700;letter-spacing:1px;}
+.add-all-btn{font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(0,230,118,.1);border:1px solid rgba(0,230,118,.3);color:var(--c2);cursor:pointer;font-family:'Noto Sans TC',sans-serif;}
+
+.result-card{background:var(--s1);border:1px solid var(--bd);border-radius:9px;padding:11px 12px;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.result-card.highlight{border-color:rgba(255,179,0,.3);background:rgba(255,179,0,.04);}
+.rc-left .rc-code{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--c1);}
+.rc-left .rc-name{font-size:14px;font-weight:700;margin-top:1px;}
+.rc-left .rc-sub{font-size:10px;color:var(--t2);margin-top:2px;}
+.rc-mid{text-align:center;}
+.rc-mid .rc-delta{font-family:'Share Tech Mono',monospace;font-size:16px;font-weight:700;}
+.rc-mid .rc-label{font-size:9px;color:var(--t2);letter-spacing:1px;}
+.rc-right{display:flex;flex-direction:column;gap:5px;align-items:flex-end;}
+.add-btn{font-size:11px;padding:5px 11px;border-radius:6px;background:rgba(0,255,255,.08);border:1px solid rgba(0,255,255,.25);color:var(--c1);cursor:pointer;font-family:'Noto Sans TC',sans-serif;white-space:nowrap;}
+.add-btn.added{background:var(--s2);border-color:var(--bd);color:var(--t2);pointer-events:none;}
+.dual-badge{font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(0,230,118,.12);color:var(--c2);border:1px solid rgba(0,230,118,.25);white-space:nowrap;}
+
+/* TABS */
+.tabs{display:flex;gap:5px;padding:8px 12px 6px;overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{flex-shrink:0;font-size:11px;padding:5px 12px;border-radius:16px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer;font-family:'Noto Sans TC',sans-serif;transition:all .2s;}
+.tab.active{background:var(--c1);color:var(--bg);border-color:var(--c1);font-weight:700;}
+
+/* WATCHLIST CARDS */
+.cards{padding:0 12px;}
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:10px;margin-bottom:8px;overflow:hidden;}
+.card.ca{border-color:rgba(255,179,0,.35);box-shadow:0 0 12px rgba(255,179,0,.06);}
+.card.cs{border-color:rgba(0,230,118,.25);}
+.card.cw{border-color:rgba(255,61,87,.25);}
+.card.cm{border-color:rgba(0,255,255,.15);}
+
+.ctop{display:flex;align-items:flex-start;justify-content:space-between;padding:10px 12px 6px;}
+.cid .ccode{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--c1);}
+.cid .cname{font-size:15px;font-weight:700;margin-top:1px;}
+.cid .cnote{font-size:10px;color:var(--t2);margin-top:2px;}
+.csig{font-size:10px;font-weight:700;padding:3px 9px;border-radius:14px;letter-spacing:.5px;}
+.ss{background:rgba(0,230,118,.1);color:var(--c2);border:1px solid rgba(0,230,118,.25);}
+.sm{background:rgba(0,255,255,.08);color:var(--c1);border:1px solid rgba(0,255,255,.2);}
+.sw{background:rgba(255,107,53,.08);color:var(--c3);border:1px solid rgba(255,107,53,.2);}
+.sd{background:rgba(255,61,87,.08);color:var(--c5);border:1px solid rgba(255,61,87,.2);}
+.sn{background:rgba(74,112,144,.08);color:var(--t2);border:1px solid var(--bd);}
+.sa{background:rgba(255,179,0,.1);color:var(--c4);border:1px solid rgba(255,179,0,.3);}
+
+/* DUAL INDICATOR ROW */
+.dual-row{display:flex;gap:5px;padding:0 12px 7px;flex-wrap:wrap;}
+.di-badge{font-size:9px;padding:2px 8px;border-radius:10px;border:1px solid;}
+.di-inst.buy{background:rgba(0,230,118,.08);color:var(--c2);border-color:rgba(0,230,118,.2);}
+.di-inst.sell{background:rgba(255,61,87,.08);color:var(--c5);border-color:rgba(255,61,87,.2);}
+.di-inst.neu{background:rgba(74,112,144,.08);color:var(--t2);border-color:var(--bd);}
+.di-chip.up{background:rgba(255,179,0,.08);color:var(--c4);border-color:rgba(255,179,0,.2);}
+.di-chip.dn{background:rgba(255,61,87,.08);color:var(--c5);border-color:rgba(255,61,87,.2);}
+.di-chip.neu{background:rgba(74,112,144,.08);color:var(--t2);border-color:var(--bd);}
+
+.cbar{height:2px;}
+.cbar-fill{height:100%;transition:width .4s;}
+
+.cmets{display:grid;grid-template-columns:repeat(4,1fr);padding:7px 12px 10px;gap:4px;border-top:1px solid var(--bd);}
+.met .ml{font-size:9px;color:var(--t2);letter-spacing:.5px;text-transform:uppercase;}
+.met .mv{font-family:'Share Tech Mono',monospace;font-size:12px;font-weight:700;margin-top:2px;}
+.green{color:var(--c2)}.red{color:var(--c5)}.cyan{color:var(--c1)}.orange{color:var(--c3)}.warn{color:var(--c4)}.gray{color:var(--t2)}
+
+.hbars{display:flex;gap:2px;align-items:flex-end;height:16px;margin-top:3px;}
+.hb{flex:1;border-radius:1px 1px 0 0;min-height:2px;}
+.hb.up{background:var(--c2)}.hb.dn{background:var(--c5)}.hb.fl{background:var(--t3)}
+
+.cacts{display:flex;border-top:1px solid var(--bd);}
+.cact{flex:1;padding:8px;font-size:11px;background:transparent;border:none;color:var(--t2);cursor:pointer;font-family:'Noto Sans TC',sans-serif;}
+.cact:first-child{border-right:1px solid var(--bd);}
+.cact.edit:active{background:rgba(0,255,255,.06);color:var(--c1);}
+.cact.del:active{background:rgba(255,61,87,.06);color:var(--c5);}
+
+/* FAB */
+.fab{position:fixed;bottom:20px;right:16px;z-index:60;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,var(--c1),#0088aa);border:none;font-size:22px;color:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,255,255,.3);}
+.fab:active{transform:scale(.93);}
+
+/* BOTTOM NAV */
+.bnav{position:fixed;bottom:0;left:0;right:0;background:rgba(2,8,16,.95);backdrop-filter:blur(10px);border-top:1px solid var(--bd);display:flex;z-index:55;padding-bottom:env(safe-area-inset-bottom);}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;padding:7px 0;gap:2px;font-size:10px;color:var(--t2);cursor:pointer;}
+.ni.active{color:var(--c1);}
+.ni-icon{font-size:18px;}
+
+/* MODAL */
+.mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;align-items:flex-end;justify-content:center;}
+.mbg.open{display:flex;}
+.modal{background:var(--s1);border:1px solid var(--bd);border-top:1px solid rgba(0,255,255,.2);border-radius:16px 16px 0 0;padding:16px 16px 30px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;}
+.mhandle{width:32px;height:3px;background:var(--bd);border-radius:2px;margin:0 auto 14px;}
+.modal h2{font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--c1);letter-spacing:2px;margin-bottom:14px;}
+.field{margin-bottom:11px;}
+.field label{display:block;font-size:9px;color:var(--t2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;}
+.field input,.field select,.field textarea{width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:7px;color:var(--t1);font-family:'Share Tech Mono',monospace;font-size:13px;padding:9px 11px;outline:none;transition:border-color .2s;-webkit-appearance:none;}
+.field input:focus,.field select:focus{border-color:var(--c1);}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.mbtns{display:flex;gap:8px;margin-top:16px;}
+.btn{flex:1;padding:11px;border-radius:8px;border:none;font-family:'Noto Sans TC',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+.btn-p{background:linear-gradient(135deg,var(--c1),#0088aa);color:var(--bg);}
+.btn-c{background:var(--s2);border:1px solid var(--bd);color:var(--t2);}
+
+/* AUTOFILL STATUS */
+.af-status{font-size:11px;margin-top:5px;min-height:14px;padding:5px 8px;border-radius:6px;display:none;}
+.af-status.show{display:block;}
+.af-status.loading{background:rgba(0,255,255,.05);border:1px solid rgba(0,255,255,.15);color:var(--c1);}
+.af-status.ok{background:rgba(0,230,118,.05);border:1px solid rgba(0,230,118,.2);color:var(--c2);}
+.af-status.err{background:rgba(255,61,87,.05);border:1px solid rgba(255,61,87,.2);color:var(--c5);}
+
+/* PAGES */
+.page{display:none;}.page.active{display:block;}
+.rules-pg{padding:12px;}
+.rule-card{background:var(--s1);border:1px solid var(--bd);border-radius:9px;padding:12px;margin-bottom:8px;}
+.rt{font-size:12px;font-weight:700;margin-bottom:5px;letter-spacing:.5px;}
+.rt.g{color:var(--c2)}.rt.b{color:var(--c1)}.rt.w{color:var(--c4)}.rt.r{color:var(--c5)}
+.rd{font-size:11px;color:var(--t2);line-height:1.8;}
+
+/* EMPTY */
+.empty{text-align:center;padding:50px 20px;color:var(--t2);}
+.ei{font-size:40px;margin-bottom:10px;}
+
+/* TOAST */
+.toast{position:fixed;top:62px;left:50%;transform:translateX(-50%) translateY(-12px);background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px 14px;font-size:12px;z-index:200;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;font-family:'Share Tech Mono',monospace;letter-spacing:1px;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-brand">
+    <h1>◈ 籌碼雷達</h1>
+    <p>INSTITUTIONAL + HOLDER TRACKER</p>
+  </div>
+  <div class="hdr-r">
+    <button class="hbtn" onclick="doExport()">📤</button>
+    <button class="hbtn" onclick="checkAlerts()">🔔</button>
+  </div>
+</div>
+
+<div class="alert-bar" id="alertBar">
+  <div class="alert-title">⚡ 大戶持股週增超過門檻</div>
+  <div id="alertList"></div>
+</div>
+
+<!-- HOME PAGE -->
+<div class="page active" id="page-home">
+  <div class="sum-grid">
+    <div class="sc g"><div class="sl">雙軌強訊號</div><div class="sv" id="s-strong">—</div></div>
+    <div class="sc w"><div class="sl">⚡ 大戶增倉</div><div class="sv" id="s-alert">—</div></div>
+    <div class="sc b"><div class="sl">追蹤總數</div><div class="sv" id="s-total">—</div></div>
+    <div class="sc o"><div class="sl">本週最高增幅</div><div class="sv" id="s-top">—</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="setFilter('all',this)">全部</button>
+    <button class="tab" onclick="setFilter('strong',this)">🔥 雙軌強訊號</button>
+    <button class="tab" onclick="setFilter('alert',this)">⚡ 大戶增倉</button>
+    <button class="tab" onclick="setFilter('inst',this)">📈 法人買超</button>
+    <button class="tab" onclick="setFilter('down',this)">⚠ 警示</button>
+  </div>
+
+  <div class="cards" id="cards"></div>
+</div>
+
+<!-- SCAN PAGE -->
+<div class="page" id="page-scan">
+  <!-- 掃描條件 -->
+  <div class="scanner" style="margin-top:10px;">
+    <div class="scanner-hdr">
+      <h3>▶ 全市場自動掃描</h3>
+      <span style="font-size:9px;color:var(--t2);letter-spacing:1px">EPS獲利股優先</span>
+    </div>
+    <div class="scanner-body">
+
+      <div class="cond-grid">
+        <div class="cond-item">
+          <span class="cond-label">大戶持股週變化</span>
+          <select class="cond-select" id="cond-chip">
+            <option value="0">任何變化</option>
+            <option value="0.5">增加 ≥ 0.5%</option>
+            <option value="1" selected>增加 ≥ 1%（建議）</option>
+            <option value="1.5">增加 ≥ 1.5%</option>
+            <option value="2">增加 ≥ 2%</option>
+            <option value="-99">減少（出貨警示）</option>
+          </select>
+        </div>
+        <div class="cond-item">
+          <span class="cond-label">法人買賣超條件</span>
+          <select class="cond-select" id="cond-inst">
+            <option value="any">不限</option>
+            <option value="foreign" selected>外資買超</option>
+            <option value="trust">投信買超</option>
+            <option value="both">外資+投信同買</option>
+            <option value="3days">外資連買3日</option>
+          </select>
+        </div>
+        <div class="cond-item">
+          <span class="cond-label">EPS條件</span>
+          <select class="cond-select" id="cond-eps">
+            <option value="0">EPS > 0（獲利）</option>
+            <option value="1" selected>EPS > 1元</option>
+            <option value="3">EPS > 3元</option>
+            <option value="5">EPS > 5元</option>
+            <option value="-99">不限（含虧損）</option>
+          </select>
+        </div>
+        <div class="cond-item">
+          <span class="cond-label">掃描範圍</span>
+          <select class="cond-select" id="cond-range">
+            <option value="top100" selected>市值前100大</option>
+            <option value="top200">市值前200大</option>
+            <option value="electronic">電子股</option>
+            <option value="trad">傳產股</option>
+            <option value="all">全市場（較慢）</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="prog-wrap" id="scanProg">
+        <div class="prog-bar"><div class="prog-fill" id="scanFill"></div></div>
+        <div class="prog-txt" id="scanTxt">準備掃描...</div>
+      </div>
+
+      <div class="scan-row">
+        <button class="scan-btn scan-secondary" onclick="quickScan()">⚡ 快速掃描（今日法人）</button>
+        <button class="scan-btn scan-primary" id="scanBtn" onclick="fullScan()">🔍 完整掃描</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 掃描結果 -->
+  <div class="result-panel" id="resultPanel">
+    <div class="result-hdr">
+      <h3 id="resultTitle">掃描結果</h3>
+      <button class="add-all-btn" onclick="addAllResults()">全部加入追蹤</button>
+    </div>
+    <div id="resultList"></div>
+  </div>
+
+  <!-- 單股查詢 -->
+  <div class="scanner" style="margin-top:8px;">
+    <div class="scanner-hdr">
+      <h3>▶ 單股查詢</h3>
+    </div>
+    <div class="scanner-body">
+      <div class="field" style="margin-bottom:8px;">
+        <label>輸入代號或名稱</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="srchQ" placeholder="如 6282 或 康舒" style="flex:1;font-family:'Noto Sans TC',sans-serif;"
+            onkeydown="if(event.key==='Enter')doSearch()">
+          <button onclick="doSearch()" id="srchBtn" style="padding:9px 14px;border-radius:7px;background:var(--c1);border:none;color:var(--bg);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans TC',sans-serif;">查詢</button>
+        </div>
+      </div>
+      <div id="srchResult"></div>
+    </div>
+  </div>
+</div>
+
+<!-- RULES PAGE -->
+<div class="page" id="page-rules">
+  <div class="rules-pg">
+    <div class="rule-card"><div class="rt g">🔥 雙軌強訊號</div><div class="rd">法人（外資/投信）買超 ＋ 集保大戶持股週增 ≥1%，兩個指標同時確認。大戶已進場，法人也在追，是最可靠的買入訊號。</div></div>
+    <div class="rule-card"><div class="rt w">⚡ 三大法人（每日）</div><div class="rd">外資、投信、自營商每日收盤後公布。外資連買是主要參考，投信持續加碼代表中線信心。時效比集保快5～7天，適合提早發現大戶蹤跡。</div></div>
+    <div class="rule-card"><div class="rt w">⚡ 集保大戶持股（每週）</div><div class="rd">持股1000張以上的大股東、內部人真實持股比例。每週五更新，最難造假。週增≥1%是有意義的增倉訊號，連增3週以上是強力確認。</div></div>
+    <div class="rule-card"><div class="rt b">📊 雙軌比對邏輯</div><div class="rd">
+      法人買超＋大戶增持 → 🔥 最強，內外資同步<br>
+      法人買超＋大戶不變 → 👀 觀察，可能短線<br>
+      法人賣超＋大戶增持 → 💡 大戶逢低吃貨<br>
+      法人賣超＋大戶減持 → ❌ 全面出貨，避開
+    </div></div>
+    <div class="rule-card"><div class="rt b">📱 使用方式</div><div class="rd">
+      1. 掃描頁設定條件，點「完整掃描」自動找出符合股票<br>
+      2. 找到目標點「加入追蹤」<br>
+      3. 首頁卡片每週更新集保資料，觀察大戶動向<br>
+      4. 雙軌訊號同時亮起時，配合技術面確認進場
+    </div></div>
+  </div>
+</div>
+
+<button class="fab" onclick="openAdd()">＋</button>
+
+<div class="bnav">
+  <div class="ni active" id="ni-home" onclick="switchPage('home')"><span class="ni-icon">📊</span><span>追蹤</span></div>
+  <div class="ni" id="ni-scan" onclick="switchPage('scan')"><span class="ni-icon">🔍</span><span>掃描</span></div>
+  <div class="ni" id="ni-rules" onclick="switchPage('rules')"><span class="ni-icon">📖</span><span>說明</span></div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="mbg" id="modal">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <h2 id="modal-title">+ NEW STOCK</h2>
+    <input type="hidden" id="ei" value="-1">
+
+    <div class="field">
+      <label>股票代號或名稱</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="f-code" placeholder="輸入代號如 6282" style="flex:1;font-family:'Noto Sans TC',sans-serif;"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();autoFill();}">
+        <button onclick="autoFill()" id="afBtn" style="padding:9px 13px;border-radius:7px;background:var(--c1);border:none;color:var(--bg);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans TC',sans-serif;flex-shrink:0;">
+          自動帶入
+        </button>
+      </div>
+      <div class="af-status" id="afStatus"></div>
+    </div>
+
+    <div id="manualFields" style="display:none;">
+      <div class="frow">
+        <div class="field"><label>股票名稱</label><input type="text" id="f-name" placeholder="康舒"></div>
+        <div class="field"><label>上市/上櫃</label><select id="f-market"><option value="上市">上市</option><option value="上櫃">上櫃</option></select></div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>大戶持股%（本週）</label><input type="number" id="f-big" step="0.01" inputmode="decimal"></div>
+        <div class="field"><label>大戶持股%（上週）</label><input type="number" id="f-prev" step="0.01" inputmode="decimal"></div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>散戶持股%</label><input type="number" id="f-small" step="0.01" inputmode="decimal"></div>
+        <div class="field"><label>股價</label><input type="number" id="f-price" step="0.1" inputmode="decimal"></div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>連增週數</label><input type="number" id="f-streak" value="1" min="0" max="52"></div>
+        <div class="field"><label>法人今日動向</label>
+          <select id="f-inst">
+            <option value="外資買超">外資買超</option>
+            <option value="投信買超">投信買超</option>
+            <option value="雙買超">外資+投信雙買超</option>
+            <option value="外資賣超">外資賣超</option>
+            <option value="觀察中">觀察中</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>備註</label><input type="text" id="f-note" placeholder="選填：題材、觀察重點"></div>
+    </div>
+
+    <div class="mbtns">
+      <button class="btn btn-c" onclick="closeModal()">取消</button>
+      <button class="btn btn-p" id="msave" onclick="saveStock()" style="display:none;">儲存新增</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+
+// ── DATA ──
+const KEY = 'chipradar_v1';
+let stocks = loadData();
+let filter = 'all';
+let scanResultsCache = [];
+
+function loadData(){
+  try{ const r=localStorage.getItem(KEY); if(r) return JSON.parse(r); }catch(e){}
+  return [
+    {code:'1326',name:'台化',  market:'上市',big:47.0, prev:43.0,small:28.0,price:54.4, streak:4, inst:'外資買超',   note:'塑化復甦+外資系統性建倉',history:[39,41,43,47.0]},
+    {code:'6282',name:'康舒',  market:'上市',big:47.72,prev:44.40,small:31.45,price:65.8,streak:4, inst:'外資買超',   note:'AI電源供應器龍頭',       history:[40,42,44,47.72]},
+    {code:'2467',name:'志聖',  market:'上市',big:42.0, prev:39.0,small:33.0,price:637,  streak:3, inst:'投信買超',   note:'玻璃基板設備+ETF持股',   history:[37,38,39,42]},
+    {code:'6196',name:'帆宣',  market:'上市',big:44.0, prev:42.5,small:32.0,price:513,  streak:5, inst:'雙買超',     note:'法人持續增倉5週',         history:[39,41,42,44]},
+    {code:'2474',name:'可成',  market:'上市',big:38.0, prev:36.5,small:35.0,price:223.5,streak:2, inst:'外資買超',   note:'NVIDIA MGX 6月量產',      history:[34,35,36.5,38]},
+    {code:'3022',name:'威強電',market:'上市',big:32.0, prev:30.5,small:38.0,price:75.9, streak:2, inst:'觀察中',     note:'等突破前高77.3',           history:[28,29,30.5,32]},
+    {code:'2414',name:'晶技',  market:'上市',big:35.0, prev:34.0,small:36.0,price:51.3, streak:1, inst:'外資買超',   note:'AI光模組石英元件龍頭',    history:[33,33.5,34,35]},
+  ];
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(stocks)); }
+
+// ── SIGNAL ──
+function getSig(s){
+  const d=+(s.big-s.prev).toFixed(2);
+  const diff=s.big-s.small;
+  const instBuy = s.inst && (s.inst.includes('買超'));
+  if(d>=1.5 && s.streak>=3 && diff>5 && instBuy) return {k:'strong',l:'🔥雙軌強訊號',c:'ss'};
+  if(d>=1.0 && instBuy)  return {k:'strong',l:'🔥雙軌強訊號',c:'ss'};
+  if(d>=1.0)             return {k:'alert', l:'⚡大戶增倉',  c:'sa'};
+  if(instBuy && d>=0.5)  return {k:'mid',   l:'📈法人+籌碼', c:'sm'};
+  if(instBuy)            return {k:'inst',  l:'📈法人買超',  c:'sm'};
+  if(d>=0.5 && s.streak>=2) return {k:'mid', l:'持續增倉',  c:'sm'};
+  if(d<-1)               return {k:'down',  l:'⚠出貨警示',  c:'sd'};
+  return {k:'neutral',l:'觀望中',c:'sn'};
+}
+function cCard(k){return k==='strong'?'cs':k==='alert'?'ca':k==='down'?'cw':k==='mid'||k==='inst'?'cm':'';}
+
+function instCls(inst){
+  if(!inst) return 'neu';
+  if(inst.includes('雙')) return 'buy';
+  if(inst.includes('買')) return 'buy';
+  if(inst.includes('賣')) return 'sell';
+  return 'neu';
+}
+function chipCls(d){ return d>=1?'up':d<=-1?'dn':'neu'; }
+
+function hbars(h){
+  if(!h||h.length<2) return '';
+  const vals=h.slice(-8);
+  const mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
+  return vals.map((v,i)=>{
+    const ht=Math.max(2,Math.round(((v-mn)/rng)*14)+2);
+    const c=i===0?'fl':v>=vals[i-1]?'up':'dn';
+    return `<div class="hb ${c}" style="height:${ht}px"></div>`;
+  }).join('');
+}
+
+// ── RENDER ──
+function render(){ renderSummary(); renderCards(); }
+
+function renderSummary(){
+  let strong=0,alert=0,topD=0,topN='—';
+  stocks.forEach(s=>{
+    const sig=getSig(s),d=s.big-s.prev;
+    if(sig.k==='strong') strong++;
+    if(d>=1.0) alert++;
+    if(d>topD){topD=d;topN=s.name;}
+  });
+  document.getElementById('s-strong').textContent=strong+'檔';
+  document.getElementById('s-alert').textContent=alert+'檔';
+  document.getElementById('s-total').textContent=stocks.length+'檔';
+  document.getElementById('s-top').textContent=topD>0?`+${topD.toFixed(2)}%`:'—';
+
+  const alerts=stocks.filter(s=>(s.big-s.prev)>=1.0);
+  const bar=document.getElementById('alertBar');
+  if(alerts.length>0){
+    bar.classList.add('show');
+    document.getElementById('alertList').innerHTML=alerts.map(s=>{
+      const d=(s.big-s.prev).toFixed(2);
+      return `<div class="alert-item"><div class="adot"></div><span><b>${s.name}(${s.code})</b> 大戶週增 +${d}%，目前 ${s.big.toFixed(2)}%</span></div>`;
+    }).join('');
+  } else bar.classList.remove('show');
+}
+
+function filterList(){
+  const order={strong:0,alert:1,mid:2,inst:3,neutral:4,down:5};
+  let list=[...stocks];
+  if(filter==='strong') list=list.filter(s=>getSig(s).k==='strong');
+  else if(filter==='alert') list=list.filter(s=>(s.big-s.prev)>=1.0);
+  else if(filter==='inst') list=list.filter(s=>s.inst&&s.inst.includes('買超'));
+  else if(filter==='down') list=list.filter(s=>getSig(s).k==='down');
+  return list.sort((a,b)=>(order[getSig(a).k]||9)-(order[getSig(b).k]||9));
+}
+
+function renderCards(){
+  const el=document.getElementById('cards');
+  const list=filterList();
+  if(list.length===0){
+    el.innerHTML=`<div class="empty"><div class="ei">📡</div><div>目前沒有符合條件的標的<br>點右下角 ＋ 新增，或到掃描頁自動搜尋</div></div>`;
+    return;
+  }
+  el.innerHTML=list.map(s=>{
+    const idx=stocks.indexOf(s);
+    const sig=getSig(s);
+    const d=+(s.big-s.prev).toFixed(2);
+    const diff=+(s.big-s.small).toFixed(2);
+    const dStr=(d>=0?'+':'')+d.toFixed(2)+'%';
+    const dCls=d>=1?'warn':d>=0?'green':'red';
+    return `
+    <div class="card ${cCard(sig.k)}">
+      <div class="ctop">
+        <div class="cid">
+          <span class="ccode">${s.code} · ${s.market||'上市'}</span>
+          <span class="cname">${s.name}</span>
+          ${s.note?`<span class="cnote">${s.note}</span>`:''}
+        </div>
+        <span class="csig ${sig.c}">${sig.l}</span>
+      </div>
+      <div class="dual-row">
+        <span class="di-badge di-inst ${instCls(s.inst)}">${s.inst||'法人資料待更新'}</span>
+        <span class="di-badge di-chip ${chipCls(d)}">大戶${d>=0?'+':''}${d.toFixed(2)}% · ${s.streak}週</span>
+        ${sig.k==='strong'?'<span class="di-badge" style="background:rgba(0,230,118,.1);color:var(--c2);border:1px solid rgba(0,230,118,.25);">雙軌確認✓</span>':''}
+      </div>
+      <div class="cbar"><div class="cbar-fill" style="width:${Math.min(100,s.big)}%;background:${d>=1?'var(--c4)':d>=0?'var(--c2)':'var(--c5)'}"></div></div>
+      <div class="cmets">
+        <div class="met"><div class="ml">大戶%</div><div class="mv cyan">${s.big.toFixed(2)}</div></div>
+        <div class="met"><div class="ml">週變化</div><div class="mv ${dCls}">${dStr}</div></div>
+        <div class="met"><div class="ml">散戶%</div><div class="mv gray">${s.small.toFixed(2)}</div></div>
+        <div class="met"><div class="ml">大-散差</div><div class="mv ${diff>=0?'green':'red'}">${diff>=0?'+':''}${diff}</div></div>
+        <div class="met"><div class="ml">連增週</div><div class="mv warn">${s.streak}週</div></div>
+        <div class="met"><div class="ml">股價</div><div class="mv">${s.price||'—'}</div></div>
+        <div class="met" style="grid-column:span 2"><div class="ml">籌碼趨勢</div><div class="hbars">${hbars(s.history)}</div></div>
+      </div>
+      <div class="cacts">
+        <button class="cact edit" onclick="openEdit(${idx})">✏️ 更新數據</button>
+        <button class="cact del" onclick="delStock(${idx})">🗑 刪除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setFilter(f,el){
+  filter=f;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderCards();
+}
+
+// ── CLAUDE AI QUERY ──
+async function queryWithClaude(prompt){
+  const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      tools:[{type:'web_search_20250305',name:'web_search'}],
+      messages:[{role:'user',content:prompt}]
+    })
+  });
+  const data=await resp.json();
+  const text=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+  return text.replace(/```json|```/g,'').trim();
+}
+
+// ── AUTO FILL ──
+async function autoFill(){
+  const q=document.getElementById('f-code').value.trim();
+  if(!q){showToast('請先輸入代號或名稱');return;}
+
+  const btn=document.getElementById('afBtn');
+  const st=document.getElementById('afStatus');
+  btn.textContent='查詢中...';
+  btn.style.background='var(--s2)';
+  btn.style.color='var(--t2)';
+  btn.disabled=true;
+  st.className='af-status show loading';
+  st.textContent='⏳ 查詢集保所籌碼資料中...';
+
+  try{
+    const prompt=`查詢台灣股票「${q}」最新資料，請用網路搜尋。
+回傳純JSON（不要其他文字）：
+{
+  "code":"股票代號",
+  "name":"公司名稱",
+  "market":"上市或上櫃",
+  "thisWeekBig":最新千張大戶持股百分比數字,
+  "lastWeekBig":上週千張大戶持股百分比數字,
+  "smallHolder":散戶持股百分比數字,
+  "price":最新股價數字,
+  "eps":近四季EPS數字,
+  "inst":"外資買超或投信買超或雙買超或外資賣超或觀察中",
+  "note":"一句話說明題材"
+}`;
+    const raw=await queryWithClaude(prompt);
+    const r=JSON.parse(raw);
+
+    document.getElementById('f-code').value=r.code||q;
+    document.getElementById('f-name').value=r.name||'';
+    document.getElementById('f-big').value=r.thisWeekBig||'';
+    document.getElementById('f-prev').value=r.lastWeekBig||'';
+    document.getElementById('f-small').value=r.smallHolder||'';
+    document.getElementById('f-price').value=r.price||'';
+    document.getElementById('f-streak').value=1;
+    document.getElementById('f-market').value=r.market||'上市';
+    document.getElementById('f-note').value=r.note||'';
+    document.getElementById('f-inst').value=r.inst||'觀察中';
+
+    const d=((r.thisWeekBig||0)-(r.lastWeekBig||0)).toFixed(2);
+    const dCl=d>=0?'var(--c2)':'var(--c5)';
+    st.className='af-status show ok';
+    st.innerHTML=`✅ <b>${r.name}</b> · 大戶${d>=0?'+':''}${d}% · EPS ${r.eps||'—'} · ${r.inst||''}`;
+    document.getElementById('manualFields').style.display='block';
+    document.getElementById('msave').style.display='block';
+    document.getElementById('msave').textContent='儲存新增';
+  }catch(e){
+    st.className='af-status show err';
+    st.textContent='❌ 查詢失敗，請手動填入資料';
+    document.getElementById('manualFields').style.display='block';
+    document.getElementById('msave').style.display='block';
+  }
+
+  btn.textContent='自動帶入';
+  btn.style.background='var(--c1)';
+  btn.style.color='var(--bg)';
+  btn.disabled=false;
+}
+
+// ── SCAN ──
+const RANGES={
+  top100:['2330','2454','2317','2382','2412','2308','2881','2882','2886','2891','1301','1303','1326','2002','3711','2379','2345','4938','3034','6505','2207','5871','2912','1216','2105','2395','2357','2408','2344','6770','3481','2409','6116','6282','2474','3022','2467','6196','2414','1504','6125','2379','2376','3045','4904','2881','2880','2884','2885','2887','2890','5880','2823','2801','5876','2303','2325','2327','2328','2329','2337','2338','2340','2342','2347','2349','2351','2353','2354','2355','2356','2357','2358','2359','2360','2362','2363','2365','2367','2368','2369','2371','2373','2374','2375','2376','2377','2379','2380','2382','2383','2385','2387','2388','2390','2392','2393','2394','2395','2396','2397','2399'],
+  top200:[],
+  electronic:['2330','2454','2317','2382','2412','2308','3711','2379','2345','4938','3034','6282','2474','3022','2467','6196','2414','6770','3481','2409','6116','2303','2325','2327','2328'],
+  trad:['1301','1303','1326','2002','2207','1504','6125','1216','2105','2207','1402','1301','2006','2049','2101','2102','2103','2104'],
+};
+
+async function quickScan(){
+  showToast('⚡ 查詢今日三大法人買超...');
+  setScanRunning(true);
+  showScanProg(0,'查詢今日法人資料...');
+
+  try{
+    const prompt=`查詢台灣股市今日（${new Date().toLocaleDateString('zh-TW')}）三大法人買超前20名股票。
+只回傳純JSON陣列（不要其他文字）：
+[{"code":"代號","name":"名稱","market":"上市或上櫃","instBuy":買超張數數字,"instType":"外資或投信或雙買超","price":股價,"eps":近四季EPS}]
+EPS虧損（<0）的請排除。按買超張數由大到小排列。`;
+
+    showScanProg(50,'AI分析中...');
+    const raw=await queryWithClaude(prompt);
+    const results=JSON.parse(raw);
+    showScanProg(100,'完成！');
+
+    scanResultsCache=results.map(r=>({
+      code:r.code,name:r.name,market:r.market||'上市',
+      instBuy:r.instBuy,inst:r.instType||'法人買超',
+      price:r.price,eps:r.eps,
+      thisWeekBig:0,lastWeekBig:0,delta:0,
+      isDual:false
+    }));
+
+    renderScanResults(scanResultsCache,`今日法人買超 · 共${results.length}檔`);
+  }catch(e){
+    showToast('查詢失敗，請重試');
+  }
+  setScanRunning(false);
+}
+
+async function fullScan(){
+  const chipThresh=parseFloat(document.getElementById('cond-chip').value);
+  const instCond=document.getElementById('cond-inst').value;
+  const epsCond=parseFloat(document.getElementById('cond-eps').value);
+  const range=document.getElementById('cond-range').value;
+
+  setScanRunning(true);
+  showScanProg(0,'準備掃描...');
+
+  try{
+    const condDesc=[
+      chipThresh>=0?`大戶持股週增≥${chipThresh}%`:'大戶持股週減少',
+      instCond==='any'?'法人不限':instCond==='foreign'?'外資買超':instCond==='trust'?'投信買超':instCond==='both'?'外資+投信雙買超':'外資連買3日',
+      `EPS>${epsCond}元`,
+      range==='top100'?'市值前100大':range==='electronic'?'電子股':range==='trad'?'傳產股':'全市場'
+    ].join('，');
+
+    showScanProg(20,'AI掃描中...');
+
+    const prompt=`搜尋台灣股市符合以下條件的股票（${new Date().toLocaleDateString('zh-TW')}最新資料）：
+條件：${condDesc}
+
+請回傳符合所有條件的股票，純JSON陣列（不要其他文字，最多20筆）：
+[{
+  "code":"代號",
+  "name":"名稱",
+  "market":"上市或上櫃",
+  "thisWeekBig":本週千張大戶持股%數字,
+  "lastWeekBig":上週千張大戶持股%數字,
+  "delta":週變化數字,
+  "smallHolder":散戶持股%,
+  "inst":"外資買超或投信買超或雙買超",
+  "instBuy":法人買超張數,
+  "price":股價,
+  "eps":近四季EPS,
+  "streak":連續增倉週數,
+  "note":"一句話說明為何符合條件"
+}]
+若無法找到完整資料，請根據最佳判斷填入估計值並在note說明。`;
+
+    showScanProg(60,'整理結果...');
+    const raw=await queryWithClaude(prompt);
+    const results=JSON.parse(raw);
+    showScanProg(100,'掃描完成！');
+
+    scanResultsCache=results.map(r=>({...r,isDual:(r.delta>=chipThresh&&r.inst&&r.inst.includes('買'))}));
+    const dualCount=scanResultsCache.filter(r=>r.isDual).length;
+
+    renderScanResults(scanResultsCache,`掃描結果 · ${results.length}檔符合 · 雙軌${dualCount}檔`);
+  }catch(e){
+    showToast('掃描失敗，請重試');
+    console.error(e);
+  }
+  setScanRunning(false);
+}
+
+function setScanRunning(v){
+  const btn=document.getElementById('scanBtn');
+  if(v){btn.textContent='掃描中...';btn.classList.add('running');}
+  else{btn.textContent='🔍 完整掃描';btn.classList.remove('running');}
+}
+
+function showScanProg(pct,txt){
+  const wrap=document.getElementById('scanProg');
+  wrap.classList.add('show');
+  document.getElementById('scanFill').style.width=pct+'%';
+  if(txt) document.getElementById('scanTxt').textContent=txt;
+  if(pct>=100) setTimeout(()=>wrap.classList.remove('show'),1500);
+}
+
+function renderScanResults(results,title){
+  const panel=document.getElementById('resultPanel');
+  panel.classList.add('show');
+  document.getElementById('resultTitle').textContent=title||'掃描結果';
+
+  document.getElementById('resultList').innerHTML=results.map((r,i)=>{
+    const already=stocks.some(s=>s.code===r.code);
+    const delta=r.delta||(r.thisWeekBig-r.lastWeekBig)||0;
+    const dStr=(delta>=0?'+':'')+delta.toFixed(2)+'%';
+    return `
+    <div class="result-card ${r.isDual?'highlight':''}">
+      <div class="rc-left">
+        <div class="rc-code">${r.code} · ${r.market||''}</div>
+        <div class="rc-name">${r.name}</div>
+        <div class="rc-sub">${r.inst||''} · EPS ${r.eps||'—'} · ₩${r.price||'—'}</div>
+      </div>
+      <div class="rc-mid">
+        <div class="rc-delta" style="color:${delta>=1?'var(--c4)':delta>=0?'var(--c2)':'var(--c5)'}">${dStr}</div>
+        <div class="rc-label">大戶週變化</div>
+      </div>
+      <div class="rc-right">
+        ${r.isDual?'<span class="dual-badge">🔥雙軌</span>':''}
+        <button class="add-btn ${already?'added':''}" id="radd_${i}" onclick="addScanItem(${i})">
+          ${already?'已追蹤':'＋加入'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // scroll to results
+  document.getElementById('resultPanel').scrollIntoView({behavior:'smooth'});
+}
+
+function addScanItem(i){
+  const r=scanResultsCache[i];
+  if(!r||stocks.some(s=>s.code===r.code)){showToast('已在追蹤清單');return;}
+  const delta=r.delta||(r.thisWeekBig-r.lastWeekBig)||0;
+  stocks.push({
+    code:r.code,name:r.name,market:r.market||'上市',
+    big:r.thisWeekBig||0,prev:r.lastWeekBig||0,
+    small:r.smallHolder||0,price:r.price||0,
+    streak:r.streak||1,inst:r.inst||'觀察中',
+    note:r.note||'',history:[r.lastWeekBig||0,r.thisWeekBig||0]
+  });
+  save();render();
+  const btn=document.getElementById(`radd_${i}`);
+  if(btn){btn.textContent='已追蹤';btn.classList.add('added');}
+  showToast(`✅ 已新增 ${r.name}`);
+}
+
+function addAllResults(){
+  let added=0;
+  scanResultsCache.forEach((r,i)=>{
+    if(stocks.some(s=>s.code===r.code)) return;
+    stocks.push({
+      code:r.code,name:r.name,market:r.market||'上市',
+      big:r.thisWeekBig||0,prev:r.lastWeekBig||0,
+      small:r.smallHolder||0,price:r.price||0,
+      streak:r.streak||1,inst:r.inst||'觀察中',
+      note:r.note||'',history:[r.lastWeekBig||0,r.thisWeekBig||0]
+    });
+    added++;
+  });
+  save();render();
+  showToast(`✅ 已新增 ${added} 檔`);
+}
+
+// ── SINGLE SEARCH ──
+async function doSearch(){
+  const q=document.getElementById('srchQ').value.trim();
+  if(!q){showToast('請輸入代號或名稱');return;}
+  const btn=document.getElementById('srchBtn');
+  btn.textContent='查詢中';btn.disabled=true;
+  document.getElementById('srchResult').innerHTML='';
+
+  const prompt=`查詢台灣股票「${q}」最新完整籌碼資料。
+回傳純JSON（不要其他文字）：
+{"code":"代號","name":"名稱","market":"上市或上櫃","thisWeekBig":本週千張大戶%,"lastWeekBig":上週千張大戶%,"smallHolder":散戶%,"price":股價,"eps":近四季EPS,"inst":"法人動向","streak":連增週數,"note":"一句話題材說明"}`;
+
+  try{
+    const raw=await queryWithClaude(prompt);
+    const r=JSON.parse(raw);
+    const delta=((r.thisWeekBig||0)-(r.lastWeekBig||0)).toFixed(2);
+    const already=stocks.some(s=>s.code===r.code);
+    document.getElementById('srchResult').innerHTML=`
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:9px;padding:13px;margin-top:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--c1)">${r.code} · ${r.market||''}</div>
+            <div style="font-size:16px;font-weight:700;margin-top:2px">${r.name}</div>
+            <div style="font-size:10px;color:var(--t2);margin-top:2px">${r.inst||''} · EPS ${r.eps||'—'}</div>
+          </div>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:18px;font-weight:700;color:${delta>=0?'var(--c4)':'var(--c5)'}">${delta>=0?'+':''}${delta}%</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px;">
+          <div><div style="font-size:9px;color:var(--t2);letter-spacing:1px">本週大戶%</div><div style="font-family:'Share Tech Mono',monospace;font-size:15px;color:var(--c1);margin-top:2px">${(r.thisWeekBig||0).toFixed(2)}</div></div>
+          <div><div style="font-size:9px;color:var(--t2);letter-spacing:1px">上週大戶%</div><div style="font-family:'Share Tech Mono',monospace;font-size:15px;color:var(--t2);margin-top:2px">${(r.lastWeekBig||0).toFixed(2)}</div></div>
+          <div><div style="font-size:9px;color:var(--t2);letter-spacing:1px">散戶%</div><div style="font-family:'Share Tech Mono',monospace;font-size:15px;color:var(--t2);margin-top:2px">${(r.smallHolder||0).toFixed(2)}</div></div>
+        </div>
+        ${r.note?`<div style="font-size:11px;color:var(--t2);margin-bottom:10px">${r.note}</div>`:''}
+        <button onclick='addFromSrch(${JSON.stringify(r).replace(/'/g,"&#39;")})' style="width:100%;padding:10px;border-radius:8px;background:${already?'var(--s2)':'linear-gradient(135deg,var(--c1),#0088aa)'};border:${already?'1px solid var(--bd)':'none'};color:${already?'var(--t2)':'var(--bg)'};font-family:'Noto Sans TC',sans-serif;font-size:13px;font-weight:700;cursor:pointer;" ${already?'disabled':''}>
+          ${already?'✓ 已在追蹤清單':'＋ 加入追蹤'}
+        </button>
+      </div>`;
+  }catch(e){
+    document.getElementById('srchResult').innerHTML=`<div style="padding:12px;font-size:12px;color:var(--t2);text-align:center">查詢失敗，請重試或手動新增</div>`;
+  }
+  btn.textContent='查詢';btn.disabled=false;
+}
+
+function addFromSrch(r){
+  if(stocks.some(s=>s.code===r.code)){showToast('已在追蹤清單');return;}
+  const delta=(r.thisWeekBig||0)-(r.lastWeekBig||0);
+  stocks.push({code:r.code,name:r.name,market:r.market||'上市',big:r.thisWeekBig||0,prev:r.lastWeekBig||0,small:r.smallHolder||0,price:r.price||0,streak:delta>0?1:0,inst:r.inst||'觀察中',note:r.note||'',history:[r.lastWeekBig||0,r.thisWeekBig||0]});
+  save();render();showToast(`✅ 已新增 ${r.name}`);doSearch();
+}
+
+// ── MODAL ──
+function openAdd(){
+  document.getElementById('ei').value=-1;
+  document.getElementById('modal-title').textContent='+ 新增追蹤標的';
+  document.getElementById('f-code').value='';
+  document.getElementById('afStatus').className='af-status';
+  document.getElementById('afStatus').textContent='';
+  document.getElementById('manualFields').style.display='none';
+  document.getElementById('msave').style.display='none';
+  ['f-name','f-big','f-prev','f-small','f-price','f-streak','f-note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-market').value='上市';
+  document.getElementById('f-inst').value='觀察中';
+  document.getElementById('modal').classList.add('open');
+  setTimeout(()=>document.getElementById('f-code').focus(),300);
+}
+
+function openEdit(idx){
+  const s=stocks[idx];
+  document.getElementById('ei').value=idx;
+  document.getElementById('modal-title').textContent=`EDIT · ${s.code}`;
+  document.getElementById('f-code').value=s.code;
+  document.getElementById('f-name').value=s.name;
+  document.getElementById('f-big').value=s.big;
+  document.getElementById('f-prev').value=s.prev;
+  document.getElementById('f-small').value=s.small||0;
+  document.getElementById('f-price').value=s.price||'';
+  document.getElementById('f-streak').value=s.streak;
+  document.getElementById('f-market').value=s.market||'上市';
+  document.getElementById('f-note').value=s.note||'';
+  document.getElementById('f-inst').value=s.inst||'觀察中';
+  document.getElementById('afStatus').className='af-status show loading';
+  document.getElementById('afStatus').textContent='可點「自動帶入」更新最新集保+法人資料';
+  document.getElementById('manualFields').style.display='block';
+  document.getElementById('msave').style.display='block';
+  document.getElementById('msave').textContent='儲存更新';
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(){document.getElementById('modal').classList.remove('open');}
+
+function saveStock(){
+  const idx=parseInt(document.getElementById('ei').value);
+  const code=document.getElementById('f-code').value.trim();
+  const name=document.getElementById('f-name').value.trim();
+  const big=parseFloat(document.getElementById('f-big').value);
+  const prev=parseFloat(document.getElementById('f-prev').value);
+  const small=parseFloat(document.getElementById('f-small').value)||0;
+  const price=parseFloat(document.getElementById('f-price').value)||0;
+  const streak=parseInt(document.getElementById('f-streak').value)||1;
+  const market=document.getElementById('f-market').value;
+  const note=document.getElementById('f-note').value.trim();
+  const inst=document.getElementById('f-inst').value;
+
+  if(!code||!name||isNaN(big)||isNaN(prev)){showToast('⚠ 請先點「自動帶入」或填寫資料');return;}
+
+  if(idx===-1){
+    stocks.push({code,name,market,big,prev,small,price,streak,inst,note,history:[prev,big]});
+    showToast(`✅ 已新增 ${name}`);
+  }else{
+    const s=stocks[idx];
+    Object.assign(s,{code,name,market,big,prev,small,price,streak,inst,note});
+    if(!s.history) s.history=[];
+    if(s.history[s.history.length-1]!==big) s.history.push(big);
+    if(s.history.length>12) s.history.shift();
+    showToast(`✅ 已更新 ${name}`);
+  }
+  save();closeModal();render();
+}
+
+function delStock(idx){
+  if(!confirm(`確定移除 ${stocks[idx].name}？`)) return;
+  const name=stocks[idx].name;
+  stocks.splice(idx,1);
+  save();render();
+  showToast(`🗑 已移除 ${name}`);
+}
+
+// ── ALERTS / EXPORT ──
+function checkAlerts(){
+  renderSummary();
+  const a=stocks.filter(s=>(s.big-s.prev)>=1);
+  if(a.length===0){showToast('✓ 本週無超過+1%標的');return;}
+  if('Notification' in window && Notification.permission==='granted'){
+    a.forEach(s=>new Notification(`⚡ ${s.name}(${s.code})`,{body:`大戶週增 +${(s.big-s.prev).toFixed(2)}%`,icon:'./icon-192.png'}));
+  }
+  showToast(`🔔 ${a.length} 檔大戶增幅超過+1%`);
+}
+
+function doExport(){
+  const csv=['代號,名稱,上市櫃,大戶%,上週%,散戶%,週變化,連增週,股價,法人動向,備註']
+    .concat(stocks.map(s=>`${s.code},${s.name},${s.market||'上市'},${s.big},${s.prev},${s.small||0},${(s.big-s.prev).toFixed(2)},${s.streak},${s.price},"${s.inst||''}","${s.note||''}"`))
+    .join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`籌碼雷達_${new Date().toLocaleDateString('zh-TW')}.csv`;
+  a.click();
+  showToast('📤 已匯出 CSV');
+}
+
+// ── PAGE ──
+function switchPage(p){
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(e=>e.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.getElementById('ni-'+p).classList.add('active');
+}
+
+// ── TOAST ──
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+render();
+</script>
+</body>
+</html>
